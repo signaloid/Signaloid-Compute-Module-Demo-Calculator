@@ -1,4 +1,5 @@
 argcomplete
+tqdm
 signaloid-utilities @ git+https://github.com/signaloid/Signaloid-Compute-Module-Utilities.git
-signaloid @ git+https://github.com/signaloid/signaloid-python.git
+signaloid @ git+https://github.com/signaloid/signaloid-data-toolkit.git
 
