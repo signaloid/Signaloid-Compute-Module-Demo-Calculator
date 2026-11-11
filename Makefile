@@ -4,10 +4,9 @@ MAKEFILE_DIR        := $(abspath $(dir $(MAKEFILE_PATH)))
 ROOT_DIR            := $(abspath $(MAKEFILE_DIR))
 
 # This is the path where your compute module is located (e.g. /dev/disk4).
+# On Windows (Git Bash), use the physical drive form (e.g. //./PhysicalDrive2).
 # Can be overridden with `make DEVICE=<your-device> target...`.
 DEVICE              ?= /dev/disk4
-
-SUDO                := $(shell OWNER=$$(stat -c '%U' $(DEVICE) 2>/dev/null || stat -f '%Su' $(DEVICE) 2>/dev/null); [ "$$OWNER" = "root" ] && echo "sudo" || echo "")
 
 # This is the compute module hardware variant you are using.
 # The supported options are:
@@ -18,8 +17,19 @@ SUDO                := $(shell OWNER=$$(stat -c '%U' $(DEVICE) 2>/dev/null || st
 # Can be overridden with `make DEVICE_TYPE=<your-device-type> target...`.
 DEVICE_TYPE         ?= SIGNALOID_C0_MICROSD_PLUS
 
-PYTHON              := python3 -u
 VENV_DIR            ?= $(ROOT_DIR)/.venv
+
+ifeq ($(OS),Windows_NT)
+        # Git Bash: `python3` is the Microsoft Store stub, the venv keeps its
+        # Python in `Scripts/`, and there is no sudo (use an administrator shell).
+        SUDO                            :=
+        PYTHON                          := py -3 -u
+        VENV_PYTHON                     := $(VENV_DIR)/Scripts/python.exe
+else
+        SUDO                            := $(shell OWNER=$$(stat -c '%U' $(DEVICE) 2>/dev/null || stat -f '%Su' $(DEVICE) 2>/dev/null); [ "$$OWNER" = "root" ] && echo "sudo" || echo "")
+        PYTHON                          := python3 -u
+        VENV_PYTHON                     := $(VENV_DIR)/bin/python3
+endif
 
 SIGNALOID_CLI       ?= signaloid-cli
 
@@ -90,9 +100,9 @@ BINARY_FILENAME      = $(BUILD_ID).main.bin
 BINARY_FILE          = $(ROOT_DIR)/$(BUILD_DIR)/$(BINARY_FILENAME)
 
 # Toolkits
-MICROSD_TOOLKIT     := $(SUDO) $(PYTHON) $(UTILITIES_DIR)/C0_microSD_toolkit.py -t $(DEVICE)
-SD_TOOLKIT          := $(SUDO) $(PYTHON) $(UTILITIES_DIR)/C0_SD_toolkit.py $(DEVICE) --variant=$(DEVICE_VARIANT)
-C0_LOGGER           := $(SUDO) $(PYTHON) $(UTILITIES_DIR)/C0_debug_logger.py $(DEVICE) --variant=$(DEVICE_VARIANT)
+MICROSD_TOOLKIT     := $(SUDO) $(PYTHON) $(UTILITIES_DIR)/C0_microSD_toolkit.py -t '$(DEVICE)'
+SD_TOOLKIT          := $(SUDO) $(PYTHON) $(UTILITIES_DIR)/C0_SD_toolkit.py '$(DEVICE)' --variant=$(DEVICE_VARIANT)
+C0_LOGGER           := $(SUDO) $(PYTHON) $(UTILITIES_DIR)/C0_debug_logger.py '$(DEVICE)' --variant=$(DEVICE_VARIANT)
 
 # Enable Global "Exit on Error" for shell commands
 .SHELLFLAGS         := -ec
@@ -157,7 +167,7 @@ clean-all: clean
 flash: $(FLASH_TARGET)
 
 flash-C0-microSD: $(BINARY_FILE)
-	@echo "\n- Flashing: Signaloid C0-microSD [$(DEVICE)]"
+	@printf '\n- Flashing: Signaloid C0-microSD [%s]\n' '$(DEVICE)'
 	@file_size=$$(ls -l $(BINARY_FILE) | awk '{print $$5}'); \
 	if [ "$${file_size}" -gt 131072 ]; then \
 		echo "Error: Binary file is too large ($$file_size bytes)."; \
@@ -166,16 +176,16 @@ flash-C0-microSD: $(BINARY_FILE)
 	@$(MICROSD_TOOLKIT) -b $(BINARY_FILE) -U -p 128K
 
 flash-C0-microSD-Plus: $(BINARY_FILE) stop
-	@echo "\n- Flashing: Signaloid C0-microSD+ [$(DEVICE)]"
+	@printf '\n- Flashing: Signaloid C0-microSD+ [%s]\n' '$(DEVICE)'
 	@$(SD_TOOLKIT) flash-application $(BINARY_FILE)
 
 flash-C0-SD: $(BINARY_FILE) stop
-	@echo "\n- Flashing: Signaloid C0-SD [$(DEVICE)]"
+	@printf '\n- Flashing: Signaloid C0-SD [%s]\n' '$(DEVICE)'
 	@$(SD_TOOLKIT) flash-application $(BINARY_FILE)
 
 # Switch mode (Bootloader - Signaloid SoC) of the C0-microSD
 switch:
-	@echo "\n- Switching: Signaloid C0-microSD [$(DEVICE)]"
+	@printf '\n- Switching: Signaloid C0-microSD [%s]\n' '$(DEVICE)'
 	@$(MICROSD_TOOLKIT) -s
 
 # Start the Signaloid SoC core
@@ -216,25 +226,25 @@ info:
 
 # Create the virtual environment needed for running the host application
 venv $(VENV_DIR):
-	@echo "\n- Creating virtual environment in $(VENV_DIR)"
+	@printf '\n- Creating virtual environment in %s\n' '$(VENV_DIR)'
 	@$(PYTHON) -m venv $(VENV_DIR)
-	@$(VENV_DIR)/bin/pip install --upgrade pip
-	@$(VENV_DIR)/bin/pip install -r $(ROOT_DIR)/python-host-application/requirements.txt
+	@$(VENV_PYTHON) -m pip install --upgrade pip
+	@$(VENV_PYTHON) -m pip install -r $(ROOT_DIR)/python-host-application/requirements.txt
 
 # Base command to run the host application
-RUN_CMD=$(SUDO) $(VENV_DIR)/bin/python3 -u $(ROOT_DIR)/python-host-application/host_application.py --device-path $(DEVICE) --variant $(DEVICE_VARIANT)
+RUN_CMD=$(SUDO) $(VENV_PYTHON) -u $(ROOT_DIR)/python-host-application/host_application.py --device-path '$(DEVICE)' --variant $(DEVICE_VARIANT)
 
 SELECTED_RUN_CMD?=$(RUN_CMD)
 
 # Run multiple host application commands. Useful for testing.
 run-all: $(VENV_DIR)
-	@echo "\n- Running the host application"
+	@printf '\n- Running the host application\n'
 	$(SELECTED_RUN_CMD) add "2.0(5)" "5.0(3)"
 	$(SELECTED_RUN_CMD) sub "2.0(5)" "5.0(3)"
 	$(SELECTED_RUN_CMD) mul "2.0(5)" "5.0(3)"
 	$(SELECTED_RUN_CMD) div "2.0(5)" "5.0(3)"
 	$(SELECTED_RUN_CMD) sample --count 100
-	@echo "\n- Finished successfully"
+	@printf '\n- Finished successfully\n'
 
 # Iterations to use for benchmarking
 ITERATIONS ?= 20
@@ -244,5 +254,5 @@ RUN_BENCH_CMD=$(RUN_CMD) --benchmark --iterations "${ITERATIONS}" --skip-plottin
 
 # Benchmark application commands. Useful for testing.
 bench-all:
-	@echo "\n- Start benchmarking"
-	@$(MAKE) -e SELECTED_RUN_CMD="$(RUN_BENCH_CMD)" run-all
+	@printf '\n- Start benchmarking\n'
+	@$(MAKE) -e SELECTED_RUN_CMD='$$(RUN_BENCH_CMD)' run-all
