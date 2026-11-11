@@ -337,6 +337,19 @@ device. This is used to measure per-iteration execution time. It defaults to 20.
 make bench-all ITERATIONS=100
 ```
 
+### Windows (Git Bash)
+
+The `Makefile` targets also run in Git Bash on Windows, with GNU `make`
+installed:
+
+- Open Git Bash as administrator. Raw disk access needs it, and there is no
+  `sudo`.
+- Set `DEVICE` to the physical drive of the compute module, e.g.
+  `make DEVICE=//./PhysicalDrive2 flash`. `Get-Disk` in PowerShell lists the
+  drive numbers.
+- The `Makefile` runs Python through the `py` launcher (`py -3`), which the
+  [python.org](https://www.python.org/downloads/windows/) installer provides.
+
 ## Learn more
 
 - [Signaloid Cloud Developer Platform](https://signaloid.io)
