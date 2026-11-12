@@ -14,6 +14,6 @@ package-lock.json
 
 # Signaloid CLI cloud-build artifacts
 .repo_id
-.build_id
+.build_id*
 *.bin
 

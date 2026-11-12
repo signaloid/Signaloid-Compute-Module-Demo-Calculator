@@ -103,7 +103,9 @@ git submodule update --remote --recursive
     - `SIGNALOID_C0_SD`.
 3. Configure the `CORE_ID` variable matching your compute module type. This
    controls the precision and correlation tracking for your application.
-   Default: `C0-*-N` core.
+   Default: `C0-*-N` core. Every `make build` uses the selected core, and
+   `make update` also saves it as the default core of the connected
+   repository.
 
 > [!WARNING]
 >
@@ -124,7 +126,9 @@ Compute Engine, and download the resulting `main.bin` firmware. The build inputs
 
 The default `make` target connects the repository (first run only), starts a
 cloud build, waits for it to finish, and downloads the firmware into
-`signaloid-soc-application/<build-id>.main.bin`. To start a build run:
+`signaloid-soc-application/<build-id>.main.bin`. The build ID is kept in
+`.build_id-<core-id>`, one file per core, so `make flash` never reuses a
+binary built for another compute module. To start a build run:
 
 ```sh
 make
@@ -175,6 +179,10 @@ For example:
   which is the uniform distribution over `[2.3, 2.7]`.
 - `2.50(2)`: is the uniform distribution over `[2.48, 2.52]`.
 - `422500(2500)`: is the uniform distribution over `[420000, 425000]`.
+
+An argument can also be a plain number without an uncertainty, e.g. `2.5`. The
+host sends it as a single float, and the compute module turns it into a
+Gaussian distribution with that mean and a standard deviation of `0.1`.
 
 The distributional input arguments must be quoted in a linux shell.
 
@@ -314,19 +322,19 @@ this register to know when a result is ready.
 | ---------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `make`           | Connect the repository, build in the cloud, and download the firmware binary.                                         |
 | `make connect`   | Connect this repository to the Signaloid Cloud Developer Platform.                                                    |
-| `make update`    | Updates this repository to the latest commit on the already connected repo on the Signaloid Cloud Developer Platform. |
-| `make build`     | Trigger a cloud build and wait for it to complete.                                                                    |
+| `make update`    | Update the connected repository to the latest commit, and save the selected core as its default.                      |
+| `make build`     | Trigger a cloud build with the selected core and wait for it to complete. On failure, print the build output.         |
 | `make download`  | Download the firmware binary.                                                                                         |
 | `make flash`     | Flash the downloaded binary to the module (selects the correct flasher from `DEVICE_TYPE`).                           |
 | `make run-all`   | Run commands with default inputs. Creates the needed Python virtual environment if needed.                            |
-| `make run-all`   | Run commands with default inputs in benchmark mode. Creates the needed Python virtual environment if needed.          |
+| `make bench-all` | Run commands with default inputs in benchmark mode. Creates the needed Python virtual environment if needed.          |
 | `make start`     | Start the Signaloid SoC core (on supported compute modules).                                                          |
 | `make stop`      | Stop the Signaloid SoC core (on supported compute modules).                                                           |
 | `make reset`     | Reset the Signaloid SoC core (on supported compute modules).                                                          |
 | `make log`       | Stream the device debug log.                                                                                          |
 | `make venv`      | Create the virtual environment needed for running the host application.                                               |
-| `make clean`     | Remove the downloaded binary and build id.                                                                            |
-| `make clean-all` | Also remove the repository id and cached builds.                                                                      |
+| `make clean`     | Remove the downloaded binary and build id of the selected core.                                                       |
+| `make clean-all` | Remove the repository id, and the build ids and binaries of every core.                                               |
 
 ### Benchmarking
 
