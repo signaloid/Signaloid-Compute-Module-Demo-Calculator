@@ -60,6 +60,12 @@ def parse_arguments(
 
     compute_module_args(parser=parser)
 
+    # The device turns a plain number into Gauss(value, 0.1) (main.c).
+    ARGUMENT_HELP = (
+        "X.Y(Z) uniform distribution, plain number (a Gaussian with "
+        "standard deviation 0.1 on the device), or Ux-String"
+    )
+
     subparsers = parser.add_subparsers(
         dest="command",
         help="Commands",
@@ -70,29 +76,29 @@ def parse_arguments(
         Commands.add.name,
         help="Add two uniform distributions X, Y",
     )
-    parser_add.add_argument("argument_a", type=str, help="First argument")
-    parser_add.add_argument("argument_b", type=str, help="Second argument")
+    parser_add.add_argument("argument_a", type=str, help=ARGUMENT_HELP)
+    parser_add.add_argument("argument_b", type=str, help=ARGUMENT_HELP)
 
     # Subparser for "sub" command (requires two uncertainty values)
     parser_sub = subparsers.add_parser(
         Commands.sub.name, help="Subtract two uniform distributions X, Y"
     )
-    parser_sub.add_argument("argument_a", type=str, help="First argument")
-    parser_sub.add_argument("argument_b", type=str, help="Second argument")
+    parser_sub.add_argument("argument_a", type=str, help=ARGUMENT_HELP)
+    parser_sub.add_argument("argument_b", type=str, help=ARGUMENT_HELP)
 
     # Subparser for "mul" command (requires two uniform distributions X, Y)
     parser_mul = subparsers.add_parser(
         Commands.mul.name, help="Multiply two uniform distributions X, Y"
     )
-    parser_mul.add_argument("argument_a", type=str, help="First argument")
-    parser_mul.add_argument("argument_b", type=str, help="Second argument")
+    parser_mul.add_argument("argument_a", type=str, help=ARGUMENT_HELP)
+    parser_mul.add_argument("argument_b", type=str, help=ARGUMENT_HELP)
 
     # Subparser for "div" command (requires two uniform distributions X, Y)
     parser_div = subparsers.add_parser(
         Commands.div.name, help="Divide two uniform distributions X, Y"
     )
-    parser_div.add_argument("argument_a", type=str, help="First argument")
-    parser_div.add_argument("argument_b", type=str, help="Second argument")
+    parser_div.add_argument("argument_a", type=str, help=ARGUMENT_HELP)
+    parser_div.add_argument("argument_b", type=str, help=ARGUMENT_HELP)
 
     # Subparser for "get" command (requires one positive integer argument)
     parser_sample = subparsers.add_parser(
@@ -215,6 +221,7 @@ def main(explicit_args: list[str] | None = None):
         )
         print_output_values(
             values=dists,
+            value_labels=[args.command],
             skip_printing=args.skip_printing_results,
             skip_plotting=args.skip_plotting_results,
         )

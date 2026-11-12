@@ -37,6 +37,7 @@ import types
 from enum import IntEnum
 from typing import Union
 
+import matplotlib
 import matplotlib.pyplot as plt
 from signaloid.distributional.dirac_delta import DiracDelta
 from signaloid.distributional.distributional import DistributionalValue
@@ -512,8 +513,11 @@ def print_output_values(
     skip_plotting: bool = False,
 ):
     """
-    Given a list of floats and Distributional values, it prints the floats
-    and Ux-Strings, and then plots the Distributional values.
+    Given a list of floats and Distributional values, it prints the floats,
+    and the particle value, mean and variance of each Distributional value,
+    and then plots the Distributional values. Without a display (matplotlib
+    backend `Agg`), each plot is saved as `<label>.png` in the current
+    directory instead.
 
     Use the `value_labels` parameter to print names for each value.
 
@@ -539,9 +543,18 @@ def print_output_values(
         print("- Output values:")
 
     for i, val in enumerate(values):
+        if isinstance(val, DistributionalValue):
+            # Recompute from the Dirac deltas: the mean in the device's Ux
+            # header can be NaN. This also sets the mean the plot uses.
+            mean = val.calculate_mean()
+
         if not skip_printing:
             if isinstance(val, DistributionalValue):
-                val_str = val.particle_value
+                val_str = (
+                    f"{val.particle_value} "
+                    f"(mean: {mean}, "
+                    f"variance: {val.calculate_variance()})"
+                )
             else:
                 val_str = str(val)
 
@@ -553,6 +566,8 @@ def print_output_values(
             if skip_plotting:
                 continue
 
+            save = matplotlib.get_backend().lower() == "agg"
+            path = f"{value_labels[i]}.png"
             plot(
                 plot_data=PlotData(dist=val),
                 matplotlib_rc_params_override={
@@ -563,8 +578,12 @@ def print_output_values(
                     f"Distribution Support\n"
                     f"{value_labels[i]}"
                 ),
+                path=path,
+                save=save,
                 verbose=False,
             )
+            if save:
+                print(f"- Saved plot: {path}")
 
 
 # Argument parsing ------------------------------------------------------------
